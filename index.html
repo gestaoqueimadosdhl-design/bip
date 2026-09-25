@@ -459,6 +459,27 @@ input[type=range]::-webkit-slider-thumb {
   background: var(--surface-0); border: 1px solid var(--border);
   border-radius: 14px; padding: 4px 14px; margin-bottom: 12px;
 }
+
+/* ── MODO DESKTOP (Centralizado) ────────── */
+@media (min-width: 768px) {
+  #sheet, #bottom-nav, #top-bar, #login-screen > .login-form {
+    max-width: 480px;
+    margin: 0 auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  #sheet.open {
+    transform: translate(-50%, 0);
+  }
+  #sheet {
+    transform: translate(-50%, 102%);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  #bottom-nav {
+    border-radius: 20px 20px 0 0;
+  }
+}
 </style>
 </head>
 <body>
@@ -466,19 +487,19 @@ input[type=range]::-webkit-slider-thumb {
 <!-- TOP BAR -->
 <div id="top-bar">
   <div class="tb-left">
-    <div class="tb-avatar" onclick="openTab('perfil')"><i class="ri-user-3-line"></i></div>
+    <div class="tb-avatar" onclick="navTap('perfil', document.querySelectorAll('.nav-item')[4])"><i class="ri-user-3-line"></i></div>
     <div>
       <div class="tb-op" id="status-operator">Operador</div>
       <div class="tb-zone" id="status-zone">SEM ZONA</div>
     </div>
   </div>
   <div class="tb-right">
-    <span style="font-family:var(--mono);font-size:10px;color:var(--text-3)">LIVE</span>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text-3)">ZEBRA DS22</span>
     <div class="dot-live" id="conn-dot"></div>
   </div>
 </div>
 
-<!-- CAMERA -->
+<!-- CAMERA (Opcional se usar webcam do notebook) -->
 <div id="reader"></div>
 <div id="vignette"></div>
 
@@ -492,7 +513,7 @@ input[type=range]::-webkit-slider-thumb {
     <div class="vf-line"></div>
   </div>
 </div>
-<div id="scan-chip">APONTAR PARA CÓDIGO</div>
+<div id="scan-chip">BIPE COM O ZEBRA DS22</div>
 
 <!-- FEEDBACK -->
 <div id="feedback">
@@ -554,8 +575,8 @@ input[type=range]::-webkit-slider-thumb {
         </div>
       </div>
 
-      <input type="file" id="file-input" class="hidden" accept=".xlsx,.csv">
-      <input type="file" id="image-input" class="hidden" accept="image/*">
+      <input type="file" id="file-input" class="hidden" accept=".xlsx,.csv" onchange="handleFile(this)">
+      <input type="file" id="image-input" class="hidden" accept="image/*" onchange="handleOCR(this)">
 
       <div id="file-status" class="status-bar hidden" style="margin-bottom:12px">
         <div class="status-dot"></div>
@@ -566,7 +587,7 @@ input[type=range]::-webkit-slider-thumb {
       </div>
 
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input type="text" id="manual-input" class="field" placeholder="Digitar ID manualmente…">
+        <input type="text" id="manual-input" class="field" placeholder="Digitar ID ou bipar com Zebra…">
         <button class="btn-icon" onclick="scanManual()"><i class="ri-check-line"></i></button>
       </div>
 
@@ -596,14 +617,13 @@ input[type=range]::-webkit-slider-thumb {
 
     <!-- LISTAS TAB -->
     <div id="view-listas" class="tab-content">
-      <div class="sec-label">Inventário por Zona</div>
+      <div class="sec-label">Inventário da Lista</div>
       <div id="inventory-list"></div>
-      <input type="file" id="inv-file-input" class="hidden" accept=".xlsx,.csv">
     </div>
 
     <!-- ZONAS TAB -->
     <div id="view-zonas" class="tab-content">
-      <div class="sec-label">Zona Ativa</div>
+      <div class="sec-label">Selecione a Zona Ativa</div>
       <div id="zones-list"></div>
     </div>
 
@@ -641,35 +661,11 @@ input[type=range]::-webkit-slider-thumb {
 
     <!-- CONFIG TAB -->
     <div id="view-config" class="tab-content">
-      <div class="sec-label">Câmera</div>
-      <div class="settings-section">
-        <div class="toggle-row">
-          <div>
-            <div style="font-size:13px;font-weight:500">Tamanho da mira</div>
-            <div style="font-size:11px;color:var(--text-3);margin-top:1px">
-              <span id="range-val">80%</span>
-            </div>
-          </div>
-          <input type="range" id="size-range" min="40" max="95" value="80" oninput="updateSize(this.value)" style="width:100px">
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div style="font-size:13px;font-weight:500">FPS do scanner</div>
-            <div style="font-size:11px;color:var(--text-3);margin-top:1px"><span id="fps-val">30</span> fps</div>
-          </div>
-          <input type="range" id="fps-range" min="5" max="60" value="30" oninput="updateFPS(this.value)" style="width:100px">
-        </div>
-      </div>
-
-      <div class="sec-label">Feedback</div>
+      <div class="sec-label">Feedback Sonoro e Tátil</div>
       <div class="settings-section">
         <div class="toggle-row">
           <span>Som de bipagem</span>
           <div class="sw on" id="sw-sound" onclick="toggleSetting('sound')"></div>
-        </div>
-        <div class="toggle-row">
-          <span>Vibração</span>
-          <div class="sw on" id="sw-vibrate" onclick="toggleSetting('vibrate')"></div>
         </div>
       </div>
     </div>
@@ -710,7 +706,7 @@ input[type=range]::-webkit-slider-thumb {
 
 <script>
 /* ═══════════════════════════════════════════
-   STATE
+   ESTADO DA APLICAÇÃO
 ═══════════════════════════════════════════ */
 const KEY = 'natefy_pro_v1';
 const WEBHOOK = 'https://mrxnxtxhxn-creator.app.n8n.cloud/webhook-test/df5b4afe-2fc4-4692-a80f-257aca92edf9';
@@ -722,48 +718,165 @@ let S = {
   found: [],
   logs: [],
   activeZone: null,
-  zoneData: {},       // {zoneId: [ids]}
   zones: ['Buffered','Sorting','Fraude','Missort','Returns','Bulky'],
   fastMode: false,
   hunt: { active: false, target: null },
   lastUndo: null,
-  lastScan: 0,
-  paused: false,
-  settings: { size: 80, fps: 30, sound: true, vibrate: true },
+  lastScanTime: Date.now(),
+  settings: { sound: true },
   totalLife: 0,
 };
-let scanner = null;
+
 let audioCtx = null;
+let sheetOpen = false;
 
 /* ═══════════════════════════════════════════
-   PERSIST
+   INTEGRAÇÃO ZEBRA DS22 (HID USB SCANNER)
 ═══════════════════════════════════════════ */
-function save() {
-  const s = { ...S };
-  localStorage.setItem(KEY, JSON.stringify(s));
+let barcodeBuffer = '';
+let lastKeyTime = Date.now();
+
+document.addEventListener('keydown', (e) => {
+  if (!S.operator) return;
+
+  const currentTime = Date.now();
+  const activeElem = document.activeElement;
+  const isInputFocused = activeElem && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'TEXTAREA');
+
+  // Se o tempo entre as teclas for grande (> 80ms), limpa o buffer (foi digitação manual)
+  if (currentTime - lastKeyTime > 80) {
+    barcodeBuffer = '';
+  }
+  lastKeyTime = currentTime;
+
+  if (e.key === 'Enter') {
+    if (barcodeBuffer.trim().length > 0) {
+      e.preventDefault();
+      const code = barcodeBuffer.trim();
+      barcodeBuffer = '';
+      
+      // Se houver texto no campo manual, limpa-o
+      if (isInputFocused && activeElem.id === 'manual-input') {
+        activeElem.value = '';
+      }
+      
+      processScan(code, 'ZEBRA DS22');
+    }
+  } else if (e.key.length === 1) { // Apenas caracteres imprimíveis
+    barcodeBuffer += e.key;
+  }
+});
+
+/* ═══════════════════════════════════════════
+   LÓGICA PRINCIPAL DE SCAN
+═══════════════════════════════════════════ */
+function processScan(code, source = 'ZEBRA DS22') {
+  if (!code) return;
+  code = code.trim();
+
+  // Modo Caça
+  if (S.hunt.active && S.hunt.target) {
+    if (code === S.hunt.target) {
+      playBeep(1000, 300);
+      showFeedback('SUCESSO', code, 'ALVO ENCONTRADO!');
+      addLog(code, 'OK (CAÇA)', source);
+    } else {
+      playBeep(200, 400);
+      showFeedback('ERRO', code, 'NÃO É O ALVO!');
+      addLog(code, 'MISSORT', source);
+    }
+    return;
+  }
+
+  // Busca na lista importada
+  let status = 'OK';
+  let desc = S.idDescs[code] || 'Item Lido';
+
+  if (S.idsToFind.length > 0) {
+    if (S.idsToFind.includes(code)) {
+      if (S.found.includes(code)) {
+        status = 'DUPLICADO';
+        playBeep(400, 200);
+      } else {
+        S.found.push(code);
+        status = 'OK';
+        playBeep(800, 150);
+      }
+    } else {
+      status = 'MISSORT';
+      playBeep(250, 300);
+    }
+  } else {
+    playBeep(800, 150);
+  }
+
+  S.lastUndo = { code, status };
+  document.getElementById('undo-btn').classList.add('show');
+
+  showFeedback(status, code, desc);
+  addLog(code, status, source);
+  
+  S.totalLife++;
+  save();
+  updateDashboard();
+  renderZones();
 }
+
+function playBeep(freq, duration) {
+  if (!S.settings.sound) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    setTimeout(() => osc.stop(), duration);
+  } catch (e) {}
+}
+
+function showFeedback(status, id, desc) {
+  const fb = document.getElementById('feedback');
+  const st = document.getElementById('fb-status');
+  document.getElementById('fb-id').textContent = id;
+  document.getElementById('fb-desc').textContent = desc;
+
+  st.textContent = status;
+  if (status === 'OK') st.style.color = 'var(--green)';
+  else if (status === 'MISSORT') st.style.color = 'var(--red)';
+  else st.style.color = 'var(--yellow)';
+
+  fb.style.opacity = '1';
+  setTimeout(() => { fb.style.opacity = '0'; }, 1800);
+}
+
+function addLog(id, status, source) {
+  S.logs.unshift({ id, status, source, time: new Date().toLocaleTimeString() });
+  if (S.logs.length > 50) S.logs.pop();
+  updateLogList();
+}
+
+/* ═══════════════════════════════════════════
+   PERSISTÊNCIA E NAVEGAÇÃO
+═══════════════════════════════════════════ */
+function save() { localStorage.setItem(KEY, JSON.stringify(S)); }
 function load() {
   const raw = localStorage.getItem(KEY);
   if (!raw) return;
   const d = JSON.parse(raw);
   S = { ...S, ...d };
-  if (!S.settings) S.settings = { size: 80, fps: 30, sound: true, vibrate: true };
 }
 
-/* ═══════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   load();
-  applySettings();
   if (S.operator) bootApp();
-  document.getElementById('file-input').onchange = e => handleFile(e.target.files[0]);
-  document.getElementById('image-input').onchange = e => handleOCR(e.target.files[0]);
-  document.getElementById('inv-file-input').onchange = e => handleInvFile(e.target.files[0]);
-  document.getElementById('manual-input').addEventListener('keydown', e => { if (e.key === 'Enter') scanManual(); });
-  document.body.addEventListener('click', () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }, { once: true });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && S.operator && !scanner) startScanner();
+  
+  document.getElementById('manual-input').addEventListener('keydown', e => { 
+    if (e.key === 'Enter') {
+      scanManual(); 
+    }
   });
 });
 
@@ -772,488 +885,205 @@ function bootApp() {
   document.getElementById('status-operator').textContent = S.operator;
   document.getElementById('p-name').textContent = S.operator;
   setZoneChip();
-  applyFastUI();
-  if (S.fastMode) document.getElementById('fast-row').classList.add('on');
-  updateFileStatus();
-  startScanner();
+  updateDashboard();
+  updateLogList();
+  renderZones();
 }
 
-/* ═══════════════════════════════════════════
-   LOGIN
-═══════════════════════════════════════════ */
-window.doLogin = function() {
+function doLogin() {
   const v = document.getElementById('op-input').value.trim();
-  if (!v) { document.getElementById('op-input').focus(); return; }
+  if (!v) return;
   S.operator = v;
   save();
   bootApp();
-};
-window.logout = function() {
+}
+
+function logout() {
   if (!confirm('Sair da conta?')) return;
   S.operator = null; save(); location.reload();
-};
-
-/* ═══════════════════════════════════════════
-   SCANNER
-═══════════════════════════════════════════ */
-function startScanner() {
-  if (scanner) return;
-  const size = Math.floor(window.innerWidth * (S.settings.size / 100));
-  scanner = new Html5Qrcode('reader');
-  scanner.start(
-    { facingMode: 'environment' },
-    { fps: S.settings.fps, qrbox: size },
-    id => onScan(id)
-  ).catch(err => console.log('cam:', err));
-  updateViewfinder();
 }
 
-function updateViewfinder() {
-  const vf = document.getElementById('viewfinder');
-  const size = Math.floor(window.innerWidth * (S.settings.size / 100));
-  vf.style.width = size + 'px';
-  vf.style.height = size + 'px';
+function toggleSheet() {
+  sheetOpen = !sheetOpen;
+  document.getElementById('sheet').classList.toggle('open', sheetOpen);
 }
 
-/* ═══════════════════════════════════════════
-   SCAN LOGIC
-═══════════════════════════════════════════ */
-function onScan(rawId) {
-  const now = Date.now();
-  if (now - S.lastScan < 700) return;
-  S.lastScan = now;
-  if (S.paused) return;
-  if (!S.fastMode) S.paused = true;
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('view-' + tabId).classList.add('active');
+}
 
-  const id = rawId.trim();
-  const desc = S.idDescs[id] || '';
+function navTap(tabId, btn) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  sheetOpen = true;
+  document.getElementById('sheet').classList.add('open');
+  switchTab(tabId, document.querySelectorAll('.tab-pill')[['scan','listas','zonas','dash','log','config','perfil'].indexOf(tabId)]);
+}
 
-  // Hunt mode
-  if (S.hunt.active) {
-    if (id === S.hunt.target) {
-      showFeedback('ok', 'ALVO ENCONTRADO', id, '');
-      toggleHunt();
-      sendN8n({ id, status: 'HUNT_SUCCESS', operator: S.operator, ts: new Date().toISOString() });
-    }
-    setTimeout(() => { if (!S.fastMode) S.paused = false; }, 1000);
-    return;
+function scanManual() {
+  const input = document.getElementById('manual-input');
+  const val = input.value.trim();
+  if (val) {
+    processScan(val, 'MANUAL');
+    input.value = '';
   }
-
-  let status = 'NÃO ENCONTRADO', fbType = 'err';
-
-  // Missort check
-  if (S.activeZone) {
-    for (const [zid, ids] of Object.entries(S.zoneData)) {
-      if (zid !== S.activeZone && ids.includes(id)) {
-        status = 'MISSORT'; fbType = 'warn'; break;
-      }
-    }
-  }
-
-  // Duplicate
-  if (status === 'NÃO ENCONTRADO' && S.found.some(x => x.id === id)) {
-    status = 'DUPLICADO'; fbType = 'warn';
-  }
-
-  // Success
-  if (status === 'NÃO ENCONTRADO' && S.idsToFind.includes(id)) {
-    status = 'SUCESSO'; fbType = 'ok';
-    S.idsToFind = S.idsToFind.filter(x => x !== id);
-  }
-
-  const entry = { id, status, desc, type: fbType, time: new Date().toISOString(), operator: S.operator, zone: S.activeZone };
-  S.logs.unshift(entry);
-  if (status === 'SUCESSO') S.found.unshift(entry);
-  S.lastUndo = entry;
-  S.totalLife++;
-  save();
-  showFeedback(fbType, status, id, desc);
-  showUndo();
-  sendN8n(entry);
-  refreshProfile();
-
-  setTimeout(() => { if (!S.fastMode) S.paused = false; }, S.fastMode ? 250 : 1100);
 }
 
-window.scanManual = function() {
-  const v = document.getElementById('manual-input').value.trim();
-  if (!v) return;
-  document.getElementById('manual-input').value = '';
-  onScan(v);
-};
-
-/* ═══════════════════════════════════════════
-   FEEDBACK
-═══════════════════════════════════════════ */
-let fbTimer;
-function showFeedback(type, status, id, desc) {
-  const el = document.getElementById('feedback');
-  const pill = el.querySelector('.fb-pill');
-
-  const colors = { ok: '#10B981', err: '#EF4444', warn: '#F59E0B' };
-  const col = colors[type] || '#94A3B8';
-
-  document.getElementById('fb-status').style.color = col;
-  document.getElementById('fb-status').textContent = status;
-  document.getElementById('fb-id').style.color = col;
-  document.getElementById('fb-id').textContent = id;
-  document.getElementById('fb-desc').textContent = desc;
-  pill.style.borderColor = col + '33';
-
-  el.style.opacity = '1';
-  el.style.pointerEvents = 'none';
-
-  if (S.settings.vibrate && navigator.vibrate) navigator.vibrate(type === 'ok' ? [80] : [40, 60, 40]);
-  if (S.settings.sound) playBeep(type);
-
-  clearTimeout(fbTimer);
-  fbTimer = setTimeout(() => { el.style.opacity = '0'; }, S.fastMode ? 400 : 1400);
-}
-
-function playBeep(type) {
-  if (!audioCtx) return;
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.connect(g); g.connect(audioCtx.destination);
-  g.gain.value = 0.08;
-  o.frequency.value = type === 'ok' ? 1400 : type === 'warn' ? 700 : 250;
-  o.start(); setTimeout(() => o.stop(), 120);
-}
-
-/* ═══════════════════════════════════════════
-   UNDO
-═══════════════════════════════════════════ */
-let undoTimer;
-function showUndo() {
-  const u = document.getElementById('undo-btn');
-  u.classList.add('show');
-  clearTimeout(undoTimer);
-  undoTimer = setTimeout(() => u.classList.remove('show'), 5000);
-}
-window.doUndo = function() {
-  if (!S.lastUndo) return;
-  S.logs = S.logs.filter((_, i) => i !== 0);
-  if (S.lastUndo.status === 'SUCESSO') {
-    S.found = S.found.filter((_, i) => i !== 0);
-    S.idsToFind.push(S.lastUndo.id);
-  }
-  sendN8n({ ...S.lastUndo, status: 'CANCELADO' });
-  S.lastUndo = null;
-  document.getElementById('undo-btn').classList.remove('show');
-  save();
-};
-
-/* ═══════════════════════════════════════════
-   FILES
-═══════════════════════════════════════════ */
-function handleFile(f) {
-  if (!f) return;
-  const r = new FileReader();
-  r.onload = e => {
-    const d = new Uint8Array(e.target.result);
-    const wb = XLSX.read(d, { type: 'array' });
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-    const ids = rows.map(x => String(x[0])).filter(i => i && /\d+/.test(i));
-    S.idsToFind = ids; S.found = [];
-    updateFileStatus();
-    save();
-  };
-  r.readAsArrayBuffer(f);
-}
-
-async function handleOCR(f) {
-  if (!f) return;
-  document.getElementById('ocr-loading').classList.add('show');
-  try {
-    const w = Tesseract.createWorker();
-    await w.load(); await w.loadLanguage('eng'); await w.initialize('eng');
-    const { data: { text } } = await w.recognize(f);
-    await w.terminate();
-    const ids = []; const descs = {};
-    text.split('\n').forEach(line => {
-      const m = line.match(/(\d{8,14})/);
-      if (m) {
-        const id = m[0];
-        const desc = line.replace(id, '').replace(/^[\s>\-.]+/, '').trim();
-        ids.push(id);
-        descs[id] = desc.length > 2 ? desc : '';
-      }
-    });
-    if (ids.length) {
-      S.idsToFind = ids; S.idDescs = { ...S.idDescs, ...descs }; S.found = [];
-      updateFileStatus(); save();
-    } else alert('Nenhum código encontrado na imagem.');
-  } catch { alert('Erro no OCR.'); }
-  finally { document.getElementById('ocr-loading').classList.remove('show'); }
-}
-
-let tempInvZone = null;
-function handleInvFile(f) {
-  if (!f || !tempInvZone) return;
-  const r = new FileReader();
-  r.onload = e => {
-    const d = new Uint8Array(e.target.result);
-    const wb = XLSX.read(d, { type: 'array' });
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-    const ids = rows.map(x => String(x[0])).filter(i => i && /\d+/.test(i));
-    S.zoneData[tempInvZone] = ids;
-    save(); renderInventory();
-  };
-  r.readAsArrayBuffer(f);
-}
-
-function updateFileStatus() {
-  const el = document.getElementById('file-status');
-  const cnt = document.getElementById('file-count');
-  if (S.idsToFind.length > 0) {
-    el.classList.remove('hidden');
-    cnt.textContent = `${S.idsToFind.length} itens prontos`;
-  } else el.classList.add('hidden');
-}
-
-/* ═══════════════════════════════════════════
-   SETTINGS
-═══════════════════════════════════════════ */
-function applySettings() {
-  document.getElementById('size-range').value = S.settings.size;
-  document.getElementById('fps-range').value = S.settings.fps;
-  document.getElementById('range-val').textContent = S.settings.size + '%';
-  document.getElementById('fps-val').textContent = S.settings.fps;
-  applySW('sw-sound', S.settings.sound);
-  applySW('sw-vibrate', S.settings.vibrate);
-}
-function applySW(id, val) {
-  const el = document.getElementById(id);
-  if (val) el.classList.add('on'); else el.classList.remove('on');
-}
-window.updateSize = function(v) {
-  S.settings.size = parseInt(v);
-  document.getElementById('range-val').textContent = v + '%';
-  updateViewfinder(); save();
-};
-window.updateFPS = function(v) {
-  S.settings.fps = parseInt(v);
-  document.getElementById('fps-val').textContent = v;
-  save();
-  if (scanner) { scanner.stop().then(() => { scanner = null; startScanner(); }).catch(() => {}); }
-};
-window.toggleSetting = function(key) {
-  S.settings[key] = !S.settings[key];
-  applySW(key === 'sound' ? 'sw-sound' : 'sw-vibrate', S.settings[key]);
-  save();
-};
-
-/* ═══════════════════════════════════════════
-   FAST MODE / HUNT
-═══════════════════════════════════════════ */
-window.toggleFast = function() {
-  S.fastMode = !S.fastMode;
-  applyFastUI(); save();
-};
-function applyFastUI() {
-  const sw = document.getElementById('fast-sw');
-  const row = document.getElementById('fast-row');
-  if (S.fastMode) { sw.classList.add('on'); row.classList.add('on'); }
-  else { sw.classList.remove('on'); row.classList.remove('on'); }
-}
-
-window.toggleHunt = function() {
-  const inp = document.getElementById('hunt-id');
-  const btn = document.getElementById('hunt-btn');
-  const badge = document.getElementById('hunt-badge');
-  if (S.hunt.active) {
-    S.hunt = { active: false, target: null };
-    inp.disabled = false; inp.value = '';
-    btn.textContent = 'Ativar'; btn.className = 'btn-sm btn-sm-primary';
-    badge.classList.add('hidden');
-  } else {
-    const v = inp.value.trim();
-    if (!v) { inp.focus(); return; }
-    S.hunt = { active: true, target: v };
-    inp.disabled = true;
-    btn.textContent = 'Parar'; btn.className = 'btn-sm btn-sm-ghost';
-    badge.classList.remove('hidden');
-  }
-  save();
-};
-
-/* ═══════════════════════════════════════════
-   ZONES
-═══════════════════════════════════════════ */
-function renderZones() {
-  const c = document.getElementById('zones-list');
-  c.innerHTML = `
-    <div class="zone-row" onclick="setZone(null)" style="margin-bottom:8px;cursor:pointer">
-      <div><div class="zone-name">Sem zona ativa</div></div>
-      <button class="btn-sm ${!S.activeZone ? 'btn-sm-green' : 'btn-sm-ghost'}">${!S.activeZone ? 'ATIVA' : 'ATIVAR'}</button>
-    </div>`;
-  S.zones.forEach(z => {
-    const zid = z.toLowerCase();
-    const isActive = S.activeZone === zid;
-    c.innerHTML += `
-      <div class="zone-row ${isActive ? 'active' : ''}" style="cursor:pointer" onclick="setZone('${zid}')">
-        <div><div class="zone-name">${z}</div></div>
-        <button class="btn-sm ${isActive ? 'btn-sm-green' : 'btn-sm-primary'}">${isActive ? 'ATIVA' : 'ATIVAR'}</button>
-      </div>`;
-  });
-}
-function setZone(id) {
-  S.activeZone = id;
-  setZoneChip();
-  save(); renderZones();
-}
 function setZoneChip() {
-  document.getElementById('status-zone').textContent = S.activeZone ? S.activeZone.toUpperCase() : 'SEM ZONA';
+  document.getElementById('status-zone').textContent = S.activeZone || 'SEM ZONA';
 }
 
-/* ═══════════════════════════════════════════
-   INVENTORY
-═══════════════════════════════════════════ */
-function renderInventory() {
-  const c = document.getElementById('inventory-list');
-  c.innerHTML = '';
-  S.zones.forEach(z => {
-    const zid = z.toLowerCase();
-    const cnt = (S.zoneData[zid] || []).length;
-    c.innerHTML += `
-      <div class="zone-row" style="margin-bottom:8px">
-        <div>
-          <div class="zone-name">${z}</div>
-          <div class="zone-count">${cnt} IDs</div>
-        </div>
-        <button class="btn-sm btn-sm-primary" onclick="loadInvZone('${zid}')">
-          <i class="ri-upload-cloud-line"></i> Carregar
-        </button>
-      </div>`;
-  });
+function renderZones() {
+  const list = document.getElementById('zones-list');
+  list.innerHTML = S.zones.map(z => `
+    <div class="zone-row ${S.activeZone === z ? 'active' : ''}" onclick="selectZone('${z}')">
+      <div>
+        <div class="zone-name">${z}</div>
+        <div class="zone-count">${S.logs.filter(l => l.zone === z).length} bipagens</div>
+      </div>
+      <button class="btn-sm ${S.activeZone === z ? 'btn-sm-green' : 'btn-sm-ghost'}">
+        ${S.activeZone === z ? 'Ativa' : 'Selecionar'}
+      </button>
+    </div>
+  `).join('');
 }
-window.loadInvZone = function(zid) {
-  tempInvZone = zid;
-  document.getElementById('inv-file-input').click();
-};
 
-/* ═══════════════════════════════════════════
-   DASHBOARD
-═══════════════════════════════════════════ */
-function updateDash() {
+function selectZone(z) {
+  S.activeZone = z;
+  setZoneChip();
+  renderZones();
+  save();
+}
+
+function toggleHunt() {
+  S.hunt.active = !S.hunt.active;
+  S.hunt.target = document.getElementById('hunt-id').value.trim();
+  const badge = document.getElementById('hunt-badge');
+  const btn = document.getElementById('hunt-btn');
+  
+  if (S.hunt.active) {
+    badge.classList.remove('hidden');
+    btn.textContent = 'Parar';
+  } else {
+    badge.classList.add('hidden');
+    btn.textContent = 'Ativar';
+  }
+}
+
+function toggleFast() {
+  S.fastMode = !S.fastMode;
+  document.getElementById('fast-sw').classList.toggle('on', S.fastMode);
+  document.getElementById('fast-row').classList.toggle('on', S.fastMode);
+}
+
+function doUndo() {
+  if (!S.lastUndo) return;
+  const idx = S.found.indexOf(S.lastUndo.code);
+  if (idx > -1) S.found.splice(idx, 1);
+  S.logs.shift();
+  document.getElementById('undo-btn').classList.remove('show');
+  S.lastUndo = null;
+  updateDashboard();
+  updateLogList();
+}
+
+function clearSession() {
+  if (!confirm('Limpar histórico da sessão?')) return;
+  S.found = [];
+  S.logs = [];
+  updateDashboard();
+  updateLogList();
+  save();
+}
+
+function updateDashboard() {
   const total = S.logs.length;
-  const ok = S.logs.filter(l => l.status === 'SUCESSO').length;
+  const ok = S.logs.filter(l => l.status === 'OK').length;
   const miss = S.logs.filter(l => l.status === 'MISSORT').length;
   const acc = total > 0 ? Math.round((ok / total) * 100) : 100;
-  const recent = S.logs.filter(l => Date.now() - new Date(l.time) < 600000).length;
-  const sph = recent * 6;
-  const okLogs = S.logs.filter(l => l.status === 'SUCESSO').sort((a,b) => new Date(a.time)-new Date(b.time));
-  let avg = 0;
-  if (okLogs.length > 1) {
-    const diffs = okLogs.slice(1).map((x,i) => (new Date(x.time)-new Date(okLogs[i].time))/1000);
-    avg = Math.round(diffs.reduce((a,b)=>a+b,0)/diffs.length);
-  }
-  document.getElementById('kpi-sph').textContent = sph;
+
+  document.getElementById('kpi-sph').textContent = total;
   document.getElementById('kpi-acc').textContent = acc + '%';
-  document.getElementById('kpi-time').textContent = avg + 's';
   document.getElementById('kpi-miss').textContent = miss;
-}
-
-function downloadExcel() {
-  if (!S.logs.length) return alert('Sem dados para exportar.');
-  const ws = XLSX.utils.json_to_sheet(S.logs);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Logs');
-  XLSX.writeFile(wb, 'natefy_relatorio.xlsx');
-}
-
-/* ═══════════════════════════════════════════
-   LOG
-═══════════════════════════════════════════ */
-function renderLog() {
-  const c = document.getElementById('log-list');
-  if (!S.logs.length) {
-    c.innerHTML = '<div class="empty"><i class="ri-inbox-line"></i><p>Nenhuma bipagem ainda</p></div>'; return;
-  }
-  c.innerHTML = S.logs.slice(0, 60).map(l => `
-    <div class="log-item">
-      <div>
-        <div class="log-id">${l.id}</div>
-        <div class="log-desc">${l.desc || l.zone || '—'}</div>
-      </div>
-      <div style="text-align:right">
-        <div class="badge ${l.type || 'err'}">${l.status}</div>
-        <div style="font-size:10px;color:var(--text-3);margin-top:4px;font-family:var(--mono)">${new Date(l.time).toLocaleTimeString()}</div>
-      </div>
-    </div>`).join('');
-}
-
-/* ═══════════════════════════════════════════
-   PROFILE
-═══════════════════════════════════════════ */
-function refreshProfile() {
-  document.getElementById('p-today').textContent = S.logs.length;
+  document.getElementById('p-today').textContent = total;
   document.getElementById('p-total').textContent = S.totalLife;
 }
 
-/* ═══════════════════════════════════════════
-   CLEAR SESSION
-═══════════════════════════════════════════ */
-window.clearSession = function() {
-  if (!confirm('Limpar a sessão atual?')) return;
-  S.logs = []; S.found = []; S.idsToFind = []; S.idDescs = {};
-  S.lastUndo = null;
-  save(); updateFileStatus();
-};
-
-/* ═══════════════════════════════════════════
-   NAV / SHEET
-═══════════════════════════════════════════ */
-window.toggleSheet = function(forceOpen) {
-  const el = document.getElementById('sheet');
-  const open = forceOpen !== undefined ? forceOpen : !el.classList.contains('open');
-  el.classList.toggle('open', open);
-};
-
-window.navTap = function(tab, el) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  el.classList.add('active');
-  if (tab === 'scan') {
-    toggleSheet(!document.getElementById('sheet').classList.contains('open'));
-  } else {
-    toggleSheet(true);
+function updateLogList() {
+  const list = document.getElementById('log-list');
+  if (S.logs.length === 0) {
+    list.innerHTML = '<div class="empty"><i class="ri-history-line"></i><p>Nenhuma bipagem realizada.</p></div>';
+    return;
   }
-  switchTab(tab);
-};
+  list.innerHTML = S.logs.map(l => `
+    <div class="log-item">
+      <div>
+        <div class="log-id">${l.id}</div>
+        <div class="log-desc">${l.source} • ${l.time}</div>
+      </div>
+      <span class="badge ${l.status === 'OK' ? 'ok' : l.status === 'MISSORT' ? 'err' : 'warn'}">${l.status}</span>
+    </div>
+  `).join('');
+}
 
-window.openTab = function(tab) {
-  toggleSheet(true);
-  switchTab(tab);
-};
-
-window.switchTab = function(tab, btn) {
-  if (btn) {
-    document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  } else {
-    document.querySelectorAll('.tab-pill').forEach(b => {
-      b.classList.toggle('active', b.textContent.toLowerCase().includes(tab.substring(0,3)));
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+    
+    S.idsToFind = [];
+    S.idDescs = {};
+    
+    json.forEach(row => {
+      const id = String(row.SHP_SHIPMENT_ID || row.ID || row.Codigo || Object.values(row)[0]).trim();
+      const desc = String(row.SHP_ITEM_DESC || row.Descricao || '').trim();
+      if (id) {
+        S.idsToFind.push(id);
+        if (desc) S.idDescs[id] = desc;
+      }
     });
-  }
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById('view-' + tab).classList.add('active');
 
-  if (tab === 'dash') updateDash();
-  if (tab === 'log') renderLog();
-  if (tab === 'zonas') renderZones();
-  if (tab === 'listas') renderInventory();
-  if (tab === 'perfil') refreshProfile();
-};
+    document.getElementById('file-status').classList.remove('hidden');
+    document.getElementById('file-count').textContent = `${S.idsToFind.length} pacotes carregados`;
+    save();
+  };
+  reader.readAsArrayBuffer(file);
+}
 
-/* ═══════════════════════════════════════════
-   N8N
-═══════════════════════════════════════════ */
-function sendN8n(data) {
-  fetch(WEBHOOK, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  }).catch(() => {});
+function handleOCR(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('ocr-loading').classList.add('show');
+  Tesseract.recognize(file, 'por').then(({ data: { text } }) => {
+    document.getElementById('ocr-loading').classList.remove('show');
+    const matches = text.match(/\b\d{10,12}\b/g);
+    if (matches && matches.length > 0) {
+      processScan(matches[0], 'OCR FOTO');
+    } else {
+      alert('Nenhum código reconhecido na imagem.');
+    }
+  });
+}
+
+function downloadExcel() {
+  const ws = XLSX.utils.json_to_sheet(S.logs);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+  XLSX.writeFile(wb, `relatorio_natefy_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function toggleSetting(key) {
+  S.settings[key] = !S.settings[key];
+  document.getElementById('sw-' + key).classList.toggle('on', S.settings[key]);
+  save();
 }
 </script>
 </body>
